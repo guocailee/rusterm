@@ -6,6 +6,7 @@ import type {
   HostProfile,
   SessionEvent,
   SessionInfo,
+  SessionStatusEvent,
   VaultStatus,
   WorkspaceState,
 } from "../types/app";
@@ -46,5 +47,15 @@ export const closeSession = (sessionId: string) =>
 
 export const listenToSessionData = (handler: (event: SessionEvent) => void): Promise<UnlistenFn> =>
   listen<SessionEvent>("session:data", (event) => {
+    handler(event.payload);
+  });
+
+export const listenToSessionStatus = (handler: (event: SessionStatusEvent) => void): Promise<UnlistenFn> =>
+  listen<SessionStatusEvent>("session:status", (event) => {
+    handler(event.payload);
+  });
+
+export const listenToSessionClosed = (handler: (event: SessionStatusEvent) => void): Promise<UnlistenFn> =>
+  listen<SessionStatusEvent>("session:closed", (event) => {
     handler(event.payload);
   });

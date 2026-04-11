@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeMap,
     fs,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -204,6 +203,3 @@ fn decode_fixed<const N: usize>(value: &str) -> Result<[u8; N], String> {
         .map_err(|_: Vec<u8>| format!("Expected {N} bytes"))
 }
 
-pub fn redact_secret_map(payload: &BTreeMap<String, String>) -> usize {
-    payload.len()
-}

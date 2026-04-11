@@ -29,3 +29,13 @@ pub struct SessionEvent {
     pub stream: String,
     pub data: String,
 }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionStatusEvent {
+    pub session_id: String,
+    pub host_id: String,
+    pub panel_id: String,
+    pub status: SessionStatus,
+    pub detail: Option<String>,
+}

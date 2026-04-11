@@ -48,6 +48,10 @@ pub fn resize_session(
 }
 
 #[tauri::command]
-pub fn close_session(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
-    state.session_manager.close_session(&session_id)
+pub fn close_session<R: Runtime>(
+    app_handle: AppHandle<R>,
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<(), String> {
+    state.session_manager.close_session(app_handle, &session_id)
 }

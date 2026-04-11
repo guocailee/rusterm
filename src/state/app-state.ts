@@ -3,6 +3,7 @@ import type {
   HostProfile,
   SessionEvent,
   SessionInfo,
+  SessionStatusEvent,
   VaultStatus,
   WorkspaceState,
 } from "../types/app";
@@ -46,6 +47,7 @@ type Action =
   | { type: "close-panel"; panelId: string }
   | { type: "assign-host"; panelId: string; hostId: string | null }
   | { type: "attach-session"; panelId: string; session: SessionInfo }
+  | { type: "update-session-status"; event: SessionStatusEvent }
   | { type: "append-session-output"; event: SessionEvent }
   | { type: "clear-session"; panelId: string; sessionId?: string | null };
 
@@ -201,6 +203,22 @@ export function appReducer(state: AppState, action: Action): AppState {
                 : panel,
             ),
           })),
+        },
+      };
+    }
+    case "update-session-status": {
+      const session = state.sessions[action.event.sessionId];
+      if (!session) return state;
+
+      return {
+        ...state,
+        sessions: {
+          ...state.sessions,
+          [action.event.sessionId]: {
+            ...session,
+            status: action.event.status,
+            detail: action.event.detail ?? session.detail,
+          },
         },
       };
     }

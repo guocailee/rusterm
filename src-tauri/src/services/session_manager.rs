@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     models::{
         host::HostProfile,
-        session::{SessionEvent, SessionInfo, SessionStatus},
+        session::{SessionEvent, SessionInfo, SessionStatus, SessionStatusEvent},
     },
     protocols::ssh::{new_runtime, SshSession},
     services::vault_store::VaultStore,
@@ -66,6 +66,17 @@ impl SessionManager {
             },
         );
 
+        let _ = app_handle.emit(
+            "session:status",
+            SessionStatusEvent {
+                session_id: info.id.clone(),
+                host_id: info.host_id.clone(),
+                panel_id: info.panel_id.clone(),
+                status: SessionStatus::Ready,
+                detail: info.detail.clone(),
+            },
+        );
+
         let session_id = info.id.clone();
         let event_host_id = host.id.clone();
         let event_panel_id = info.panel_id.clone();
@@ -110,7 +121,7 @@ impl SessionManager {
         ssh.resize(cols, rows)
     }
 
-    pub fn close_session(&self, session_id: &str) -> Result<(), String> {
+    pub fn close_session<R: Runtime>(&self, app_handle: AppHandle<R>, session_id: &str) -> Result<(), String> {
         let session = self
             .sessions
             .lock()
@@ -118,13 +129,21 @@ impl SessionManager {
             .remove(session_id)
             .ok_or_else(|| "Session not found".to_string())?;
 
-        self.runtime.block_on(session.ssh.close())
+        let result = self.runtime.block_on(session.ssh.close());
+
+        if result.is_ok() {
+            let status = SessionStatusEvent {
+                session_id: session.info.id,
+                host_id: session.info.host_id,
+                panel_id: session.info.panel_id,
+                status: SessionStatus::Closed,
+                detail: Some("Session closed".to_string()),
+            };
+            let _ = app_handle.emit("session:closed", status.clone());
+            let _ = app_handle.emit("session:status", status);
+        }
+
+        result
     }
 
-    pub fn has_session(&self, session_id: &str) -> bool {
-        self.sessions
-            .lock()
-            .expect("session mutex poisoned")
-            .contains_key(session_id)
-    }
 }

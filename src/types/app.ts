@@ -10,6 +10,14 @@ export interface SessionEvent {
   data: string;
 }
 
+export interface SessionStatusEvent {
+  sessionId: string;
+  hostId: string;
+  panelId: string;
+  status: SessionStatus;
+  detail?: string | null;
+}
+
 export interface HostProfile {
   id: string;
   label: string;

@@ -4,7 +4,9 @@ import {
   closeSession,
   deleteHost,
   initVault,
+  listenToSessionClosed,
   listenToSessionData,
+  listenToSessionStatus,
   loadConfig,
   lockVault,
   openSshSession,
@@ -55,16 +57,41 @@ function App() {
       }
     })();
 
-    let unlisten: (() => void) | undefined;
+    let unlistenData: (() => void) | undefined;
+    let unlistenStatus: (() => void) | undefined;
+    let unlistenClosed: (() => void) | undefined;
+
     void listenToSessionData((event) => {
       terminalWriters.current[event.panelId]?.(event.data);
       dispatch({ type: "append-session-output", event });
     }).then((dispose) => {
-      unlisten = dispose;
+      unlistenData = dispose;
+    });
+
+    void listenToSessionStatus((event) => {
+      dispatch({ type: "update-session-status", event });
+      if (event.detail) {
+        setStatusMessage(event.detail);
+      }
+    }).then((dispose) => {
+      unlistenStatus = dispose;
+    });
+
+    void listenToSessionClosed((event) => {
+      dispatch({ type: "update-session-status", event });
+      dispatch({ type: "clear-session", panelId: event.panelId, sessionId: event.sessionId });
+      delete terminalWriters.current[event.panelId];
+      if (event.detail) {
+        setStatusMessage(event.detail);
+      }
+    }).then((dispose) => {
+      unlistenClosed = dispose;
     });
 
     return () => {
-      unlisten?.();
+      unlistenData?.();
+      unlistenStatus?.();
+      unlistenClosed?.();
     };
   }, []);
 

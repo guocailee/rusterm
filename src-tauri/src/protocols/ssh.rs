@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use russh::{
     client::{self, Handle},
     keys::{decode_secret_key, PrivateKeyWithHashAlg},
-    ChannelId, ChannelMsg,
+    ChannelMsg,
 };
 use tokio::{
     io::AsyncWriteExt,
@@ -29,7 +29,6 @@ impl client::Handler for ClientHandler {
 
 pub struct SshSession {
     handle: Handle<ClientHandler>,
-    channel_id: ChannelId,
     writer: Arc<Mutex<Box<dyn tokio::io::AsyncWrite + Send + Unpin>>>,
     resize_tx: mpsc::UnboundedSender<(u32, u32)>,
 }
@@ -93,7 +92,6 @@ impl SshSession {
             .await
             .map_err(|error| error.to_string())?;
 
-        let channel_id = channel.id();
         let (mut reader, writer_half) = channel.split();
         let writer: Box<dyn tokio::io::AsyncWrite + Send + Unpin> = Box::new(writer_half.make_writer());
         let writer = Arc::new(Mutex::new(writer));
@@ -122,7 +120,6 @@ impl SshSession {
         Ok((
             Self {
                 handle: session,
-                channel_id,
                 writer,
                 resize_tx,
             },
