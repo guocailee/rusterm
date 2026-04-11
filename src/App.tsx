@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
+import { FormEvent, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import "./App.css";
 import {
   closeSession,
@@ -8,13 +8,16 @@ import {
   loadConfig,
   lockVault,
   openSshSession,
+  resizeSession,
   saveHost,
   saveWorkspace,
+  sendSessionInput,
   unlockVault,
   upsertVaultItem,
 } from "./lib/tauri";
 import { appReducer, createInitialState } from "./state/app-state";
 import type { HostDraft, HostProfile, PanelState } from "./types/app";
+import { TerminalPanel } from "./components/TerminalPanel";
 
 const defaultDraft: HostDraft = {
   label: "",
@@ -35,6 +38,7 @@ function App() {
   const [vaultPassword, setVaultPassword] = useState("");
   const [statusMessage, setStatusMessage] = useState("Ready");
   const [busy, setBusy] = useState(false);
+  const terminalWriters = useRef<Record<string, (chunk: string) => void>>({});
 
   useEffect(() => {
     void (async () => {
@@ -53,6 +57,7 @@ function App() {
 
     let unlisten: (() => void) | undefined;
     void listenToSessionData((event) => {
+      terminalWriters.current[event.panelId]?.(event.data);
       dispatch({ type: "append-session-output", event });
     }).then((dispose) => {
       unlisten = dispose;
@@ -199,7 +204,7 @@ function App() {
     try {
       const sessionInfo = await openSshSession(panel.hostId, panel.id);
       dispatch({ type: "attach-session", panelId: panel.id, session: sessionInfo });
-      setStatusMessage(`Opened placeholder SSH session for ${hostMap.get(panel.hostId)?.label ?? panel.hostId}`);
+      setStatusMessage(`Opened SSH session for ${hostMap.get(panel.hostId)?.label ?? panel.hostId}`);
     } catch (error) {
       setStatusMessage(String(error));
     } finally {
@@ -214,12 +219,27 @@ function App() {
     try {
       await closeSession(panel.sessionId);
       dispatch({ type: "clear-session", panelId: panel.id, sessionId: panel.sessionId });
+      delete terminalWriters.current[panel.id];
       setStatusMessage("Session closed");
     } catch (error) {
       setStatusMessage(String(error));
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleTerminalInput = (panel: PanelState, input: string) => {
+    if (!panel.sessionId) return;
+    void sendSessionInput(panel.sessionId, input).catch((error) => {
+      setStatusMessage(String(error));
+    });
+  };
+
+  const handleTerminalResize = (panel: PanelState, cols: number, rows: number) => {
+    if (!panel.sessionId) return;
+    void resizeSession(panel.sessionId, cols, rows).catch((error) => {
+      setStatusMessage(String(error));
+    });
   };
 
   return (
@@ -419,21 +439,21 @@ function App() {
                 </div>
 
                 <div className="terminal-placeholder">
-                  {panelSession ? (
-                    <>
-                      <div className="terminal-status">Session {panelSession.status}</div>
-                      <pre>{panelSession.detail ?? "Terminal output stream will render here."}</pre>
-                    </>
-                  ) : (
-                    <>
-                      <div className="terminal-status">Idle</div>
-                      <pre>
-                        {attachedHost
-                          ? `Ready to connect to ${attachedHost.username}@${attachedHost.hostname}:${attachedHost.port}`
-                          : "Assign a host to start a terminal session."}
-                      </pre>
-                    </>
-                  )}
+                  <div className="terminal-status">{panelSession ? `Session ${panelSession.status}` : "Idle"}</div>
+                  <TerminalPanel
+                    connected={Boolean(panel.sessionId)}
+                    initialText={
+                      panelSession?.detail ??
+                      (attachedHost
+                        ? `Ready to connect to ${attachedHost.username}@${attachedHost.hostname}:${attachedHost.port}\n`
+                        : "Assign a host to start a terminal session.\n")
+                    }
+                    onData={(value) => handleTerminalInput(panel, value)}
+                    onResize={(cols, rows) => handleTerminalResize(panel, cols, rows)}
+                    registerWriter={(writer) => {
+                      terminalWriters.current[panel.id] = writer;
+                    }}
+                  />
                 </div>
               </article>
             );

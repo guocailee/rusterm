@@ -276,16 +276,26 @@ textarea {
   border-radius: 14px;
   border: 1px solid #30363d;
   background: linear-gradient(180deg, #0d1117 0%, #11161c 100%);
-  padding: 1rem;
+  padding: 0.75rem;
   min-height: 320px;
-  overflow: auto;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.5rem;
 }
 
-.terminal-placeholder pre {
-  margin: 0;
-  color: #c9d1d9;
-  white-space: pre-wrap;
-  font-family: "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, monospace;
+.terminal-canvas {
+  min-height: 0;
+  height: 100%;
+}
+
+.terminal-canvas .xterm {
+  height: 100%;
+  padding: 0.25rem;
+}
+
+.terminal-canvas .xterm-viewport {
+  border-radius: 10px;
 }
 
 .empty-state {
