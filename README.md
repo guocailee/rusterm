@@ -212,3 +212,7 @@ cargo check --manifest-path src-tauri/Cargo.toml
 - `cargo check --manifest-path src-tauri/Cargo.toml`
 - `pnpm exec tsc --noEmit`
 - `pnpm exec vite build`
+
+## License
+
+本项目基于 MIT License 开源，详见 [LICENSE](./LICENSE)。
